@@ -1,0 +1,4 @@
+C:\fsharp\MultiProject\FSharpSample\src\App\bin\Release\net10.0\win-x64\publish\App.pdb
+C:\fsharp\MultiProject\FSharpSample\src\App\bin\Release\net10.0\win-x64\publish\Library.pdb
+C:\fsharp\MultiProject\FSharpSample\src\App\bin\Release\net10.0\win-x64\publish\Library.xml
+C:\fsharp\MultiProject\FSharpSample\src\App\bin\Release\net10.0\win-x64\publish\App.exe

@@ -1,0 +1,13 @@
+C:\fsharp\MultiProject\FSharpSample\src\Library\bin\Release\net10.0\Library.deps.json
+C:\fsharp\MultiProject\FSharpSample\src\Library\bin\Release\net10.0\Library.dll
+C:\fsharp\MultiProject\FSharpSample\src\Library\bin\Release\net10.0\Library.pdb
+C:\fsharp\MultiProject\FSharpSample\src\Library\bin\Release\net10.0\Library.xml
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\Library.fsproj.AssemblyReference.cache
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\Library.AssemblyInfoInputs.cache
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\Library.AssemblyInfo.fs
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\Library.fsproj.CoreCompileInputs.cache
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\Library.dll
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\refint\Library.dll
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\Library.xml
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\Library.pdb
+C:\fsharp\MultiProject\FSharpSample\src\Library\obj\Release\net10.0\ref\Library.dll
