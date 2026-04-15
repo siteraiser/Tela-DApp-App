@@ -8,18 +8,18 @@
     ".NETCoreApp,Version=v10.0": {
       "App/1.0.0": {
         "dependencies": {
-          "FSharp.Core": "10.1.201",
+          "FSharp.Core": "10.1.202",
           "Library": "1.0.0"
         },
         "runtime": {
           "App.dll": {}
         }
       },
-      "FSharp.Core/10.1.201": {
+      "FSharp.Core/10.1.202": {
         "runtime": {
           "lib/netstandard2.1/FSharp.Core.dll": {
             "assemblyVersion": "10.1.0.0",
-            "fileVersion": "10.102.126.15422"
+            "fileVersion": "10.102.226.18118"
           }
         },
         "resources": {
@@ -66,7 +66,7 @@
       },
       "Library/1.0.0": {
         "dependencies": {
-          "FSharp.Core": "10.1.201"
+          "FSharp.Core": "10.1.202"
         },
         "runtime": {
           "Library.dll": {
@@ -83,12 +83,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "FSharp.Core/10.1.201": {
+    "FSharp.Core/10.1.202": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-s5w9LWYurZ9yZdIppoIaYLkRadyT5s3u0wbQCb0J4bQd3ubIlIWQ3Nd5+ll1y3pv5OnTS373dP8T1S/BP46QXg==",
-      "path": "fsharp.core/10.1.201",
-      "hashPath": "fsharp.core.10.1.201.nupkg.sha512"
+      "sha512": "sha512-AEGcKK+UJOEa+g7+Y5N/R+EtafmIuqufCDeRdWXoIko1/JQT4jr+zH2PnNHVC4gPB19/pmIpQiuAs01pH8Ao5Q==",
+      "path": "fsharp.core/10.1.202",
+      "hashPath": "fsharp.core.10.1.202.nupkg.sha512"
     },
     "Library/1.0.0": {
       "type": "project",

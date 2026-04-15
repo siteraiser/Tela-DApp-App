@@ -17,6 +17,7 @@ let waitForApi (url: string) =
         while not ready do
             try
                 let! resp = client.GetAsync(url)
+                printfn "%A"  resp
                 if resp.IsSuccessStatusCode then
                     ready <- true
                 else
@@ -95,7 +96,7 @@ let main argv =
     let url = "http://localhost:8081/search"
 
     // Wait for API to be ready
-    waitForApi url
+    waitForApi "http://localhost:8080/GetLastIndexHeight"
     |> Async.AwaitTask
     |> Async.RunSynchronously
     |> ignore
