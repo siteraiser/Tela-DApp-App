@@ -1,14 +1,10 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
-open System
 open System.Diagnostics
 open System.Net
-open System.IO
-open Gnomon
 open Tela
-open Dvm
 open System.Net.Http
 open System.Threading.Tasks
-
+// Build command:dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
 let waitForApi (url: string) =
     task {
         use client = new HttpClient()

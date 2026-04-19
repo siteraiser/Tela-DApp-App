@@ -2,8 +2,7 @@ module Gnomon
 
 open System.Net.Http
 open System.Text.Json
-open System.Text.Json.Serialization
-open System.Text
+
 
 
 let http = new HttpClient()

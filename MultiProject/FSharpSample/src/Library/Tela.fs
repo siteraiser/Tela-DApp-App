@@ -1,10 +1,8 @@
 module Tela
 
-open System
 open System.Net
 open System.IO
 open System.Diagnostics
-open System.Collections.Generic
 open System.Collections.Concurrent
 open Gnomon
 open Json
@@ -134,10 +132,10 @@ let handleOpen scid = task {
 
 let scidToPort = ConcurrentDictionary<string, int>()
 let portToScid = ConcurrentDictionary<int, string>()
-let portToInstance = System.Collections.Concurrent.ConcurrentDictionary<int, InstanceState>()
+let portToInstance = ConcurrentDictionary<int, InstanceState>()
 //let instances = Dictionary<int, InstanceState>()
 
-let instances = System.Collections.Concurrent.ConcurrentDictionary<int, InstanceState>()
+let instances = ConcurrentDictionary<int, InstanceState>()
 
 
 let pickPort () =
@@ -215,8 +213,8 @@ let serve (context: HttpListenerContext) (entry: DocEntry) =
         printfn "entry: %A" (entry)
         // 1. Load SCID source. 
         // Future fix: try to get the already saved data from the entry lols
-        let! source = GetSC entry.scid
-        let sccode  = tryGet ("C", source) |> optStringToRawJson
+      //  let! source = GetSC entry.scid
+        let sccode  = entry.sccode |> optStringToRawJson
 
         printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.filename entry.scid entry.sccode
 

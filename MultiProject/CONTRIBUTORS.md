@@ -1,0 +1,2 @@
+- carl — human architect, coder and tamer of the choas tamer
+- Copilot — non-human collaborator, code whisperer, and chaos tamer
