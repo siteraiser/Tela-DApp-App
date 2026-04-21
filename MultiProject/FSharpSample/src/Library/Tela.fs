@@ -1,5 +1,6 @@
 module Tela
 
+open System
 open System.Net
 open System.IO
 open System.Diagnostics
@@ -11,7 +12,7 @@ open Dvm
 
 type DocEntry =
     { scid: string
-      filename: string option
+      file: string option
       doctype: string option 
       sccode: string option }
 
@@ -64,14 +65,12 @@ let buildDocMap rootscid vars =
             let key = tryGetString v.Key
             let value = tryGetString v.Value
             match key, value with
-            | Some key, Some value when key.StartsWith("DOC") -> Some { scid = value; doctype = None; filename = None; sccode = None }
+            | Some key, Some value when key.StartsWith("DOC") -> Some { scid = value; doctype = None; file = None; sccode = None }
             | _ -> None)
 
     { rootscid = rootscid; docs = docs }
 
 
-//might need to get the "variables" array, then do this
-//Should work for sc_code (top level, like variables)
 let tryGet (key: string, vars: ScidVariable array) =
     vars
     |> Array.tryFind (fun v ->
@@ -81,6 +80,11 @@ let tryGet (key: string, vars: ScidVariable array) =
     |> Option.bind (fun v -> jsonToOptString v.Value)
 
 
+let trimLeadingSlash (input: string) =
+    if String.IsNullOrEmpty(input) then
+        input // Return as-is if null or empty
+    else
+        input.TrimStart('/')
 
 let enrichDocMap (dm: DocMap) =
     task {
@@ -92,15 +96,29 @@ let enrichDocMap (dm: DocMap) =
             let filename =
                 tryGet ("nameHdr", vars)
                 |> Option.orElse (tryGet ("dURL", vars))
+            let subdir = tryGet ("subDir", vars)
             let doctype  = tryGet ("docType", vars)
             let sccode  = tryGet ("C", vars)   // ← NEW
+            let full =
+                [ subdir; filename ]
+                |> List.choose id
+                |> String.concat "/"
 
-            printfn "Loaded SCID %s: filename=%A doctype=%A C_length=%A"
-                d.scid filename doctype (sccode |> Option.map String.length)
+            let toStringOption (input: string) : string option =
+                match input with
+                | null -> None                      // Handle null
+                | s when String.IsNullOrWhiteSpace s -> None // Handle empty/whitespace
+                | s -> Some s       
+                     
+            let full = trimLeadingSlash full
+            let file = toStringOption full 
+          
+            printfn "Loaded SCID %s: file=%A doctype=%A C_length=%A"
+                d.scid file doctype (sccode |> Option.map String.length)
 
             let updated =
                 { d with
-                    filename = filename
+                    file = file
                     doctype  = doctype 
                     sccode =  sccode }
 
@@ -216,7 +234,7 @@ let serve (context: HttpListenerContext) (entry: DocEntry) =
       //  let! source = GetSC entry.scid
         let sccode  = entry.sccode |> optStringToRawJson
 
-        printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.filename entry.scid entry.sccode
+        printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.file entry.scid entry.sccode
 
         // 2. Extract embedded content
         match extractDvmComment sccode with
@@ -230,7 +248,7 @@ let serve (context: HttpListenerContext) (entry: DocEntry) =
         | Some content ->
             // 3. Determine MIME type
             let mime =
-                match entry.filename with
+                match entry.file with
                 | Some f when f.EndsWith(".html") -> "text/html"
                 | Some f when f.EndsWith(".css")  -> "text/css"
                 | Some f when f.EndsWith(".js")   -> "application/javascript"
@@ -280,11 +298,9 @@ let handleInstanceFileRequest (context: HttpListenerContext) =
 
             | true, instance ->
                 let dm = instance.docMap
-                     
-    // continue with your existing routing logic
                 match path with
                 | "" ->
-                    match dm.docs |> List.tryFind (fun d -> d.filename = Some "index.html") with
+                    match dm.docs |> List.tryFind (fun d -> d.file = Some "index.html") with
                     | Some entry -> return! serve context entry
                     | None ->
                         match dm.docs with
@@ -292,143 +308,9 @@ let handleInstanceFileRequest (context: HttpListenerContext) =
                         | _ -> return! respond404 context "No index.html and multiple docs"
 
                 | file ->
-                    match dm.docs |> List.tryFind (fun d -> d.filename = Some file) with
+                    match dm.docs |> List.tryFind (fun d -> d.file = Some file) with
                     | Some entry -> return! serve context entry
                     | None -> return! respond404 context "File not found"
     }
 
  
-(*
-
-let handleInstanceFileRequest (context: HttpListenerContext) =
-    task {
-        let path = context.Request.Url.LocalPath.Trim('/')
-        let response = context.Response
-
-        match DocStore.tryGet scid with
-        | None ->
-            respond404 "Unknown SCID"
-
-        | Some dm ->
-            match path with
-            | "" ->
-                // root → index.html or fallback
-                match dm.docs |> List.tryFind (fun d -> d.filename = Some "index.html") with
-                | Some entry -> serve entry
-                | None ->
-                    match dm.docs with
-                    | [single] -> serve single
-                    | _ -> respond404 "No index.html and multiple docs"
-
-            | file ->
-                match dm.docs |> List.tryFind (fun d -> d.filename = Some file) with
-                | Some entry -> serve entry
-                | None -> respond404 "File not found"
-    }
-
-
-let handleInstanceFileRequest (context: HttpListenerContext) =
-    task {
-        let path = context.Request.Url.LocalPath
-        let response = context.Response
-
-        let segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries)
-
-
-        match segments with
-        | [| "tela"; scid; file |] ->
-            printfn "Serving %s for SCID %s" file scid
-
-            match DocStore.tryGet scid with
-            | None ->
-                response.StatusCode <- 404
-                use w = new StreamWriter(response.OutputStream)
-                do! w.WriteAsync("Unknown SCID")
-                response.Close()
-
-            | Some dm ->
-                // Find the doc entry that matches the requested file
-                match dm.docs |> List.tryFind (fun d -> d.filename = Some file) with
-                | None ->
-                    response.StatusCode <- 404
-                    use w = new StreamWriter(response.OutputStream)
-                    do! w.WriteAsync("File not found in DocMap")
-                    response.Close()
-
-                | Some entry ->
-                    // Load the SCID source
-                    let! source = GetSC entry.scid
-                    let sccode  = tryGet ("C", source)
-                    let sccode = optStringToJsonLiteral sccode
-
-                    match extractDvmComment sccode with
-                    | None ->
-                        response.StatusCode <- 500
-                        use w = new StreamWriter(response.OutputStream)
-                        do! w.WriteAsync("No embedded content found")
-                        response.Close()
-
-                    | Some content ->
-                        // Set MIME type
-                        if file.EndsWith(".html") then
-                            response.ContentType <- "text/html"
-                        elif file.EndsWith(".css") then
-                            response.ContentType <- "text/css"
-                        elif file.EndsWith(".js") then
-                            response.ContentType <- "application/javascript"
-                        else
-                            response.ContentType <- "text/plain"
-
-                        use w = new StreamWriter(response.OutputStream)
-                        do! w.WriteAsync(content)
-                        response.Close()
-
-        | _ ->
-            response.StatusCode <- 400
-            use w = new StreamWriter(response.OutputStream)
-            do! w.WriteAsync("Invalid Tela instance path")
-            response.Close()
-    }
-
-
-
-
-    
-
-let handleInstanceFileRequest (context: HttpListenerContext) = 
-        task {
-            let path = context.Request.Url.LocalPath
-            let response = context.Response
-            use writer = new StreamWriter(response.OutputStream)
-            let html = "File Request Path:" + path + "<br>"
-            printfn "%s" html
-            do! writer.WriteAsync(html)
-            do! writer.FlushAsync()
-
-            response.Close()
-        }
-*)
-
-
-
-(*
-get the request's port
-let port = ctx.Request.LocalEndPoint.Port
-
-
-
-function openTela(scid) {
-    fetch(`/launch/${scid}`)
-        .then(r => r.json())
-        .then(data => {
-            window.open(data.url, "_blank");
-        });
-}
-
-
-open System.Diagnostics
-//system port picker
-listener.Prefixes.Add("http://localhost:0/")
-listener.Start()
-let actualPort = listener.LocalEndpoint.Port
-*)
