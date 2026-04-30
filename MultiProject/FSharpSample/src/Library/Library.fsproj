@@ -9,6 +9,7 @@
     <Compile Include="Json.fs" />
     <Compile Include="Dvm.fs" />
     <Compile Include="Gnomon.fs" />
+    <Compile Include="Security.fs" />
     <Compile Include="Htmlcontent.fs" />    
     <Compile Include="Tela.fs" />
 

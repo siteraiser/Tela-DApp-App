@@ -1,6 +1,7 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
 open System.Diagnostics
 open System.Net
+open Security
 open Tela
 open System.Net.Http
 open System.Threading.Tasks
@@ -41,14 +42,19 @@ let handleTelaRequest (context: HttpListenerContext,port:int) =
             context.Response.Close()
     }
 
+
+
+let isValid (context: HttpListenerContext) = 
+    match context.Request.Headers.["X-Launcher-Token"] with
+    | null -> false
+    | token -> validate token
+
 let handleStartingRequests path context =
     task {
         if path = "/search" then
             return! search context
-
-        elif path.StartsWith("/tela/open/") then
+        elif path.StartsWith("/tela/open/") && isValid context then      
             return! handleTelaProtocol context
-
         else
             return! respond404 context "Unknown starting route"
     }

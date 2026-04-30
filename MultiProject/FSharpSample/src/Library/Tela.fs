@@ -43,7 +43,7 @@ let search (context: HttpListenerContext) =
 
         let! html = index []   // or whatever args you want
         let html = searchHTMLOpen + html + searchHTMLClose
-
+        
         do! writer.WriteAsync(html)
         do! writer.FlushAsync()
 

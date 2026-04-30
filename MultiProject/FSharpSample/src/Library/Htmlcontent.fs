@@ -1,11 +1,14 @@
 module Htmlcontent
 
+open Security
 let searchHTMLOpen = """<!doctype html>
 <html>
 <body>
 """
-let searchHTMLClose = """
+
+let searchHTMLCloseTemplate = """
 <script>
+const AUTH_TOKEN = "{{TOKEN}}";
 document.addEventListener("DOMContentLoaded", () => {
     const links = document.getElementsByTagName("a");
 
@@ -13,7 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
     Array.from(links).forEach(link => {
         link.addEventListener("click", e => {
             e.preventDefault(); // stop normal navigation
-
             const scid = link.getAttribute("data-scid");
             launch(scid);
         });
@@ -21,21 +23,36 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function launch(scid) {
-    fetch(`/tela/open/${scid}`)
-        .then(r => r.json())
-        .then(data => {
-            console.log("Backend response:", data);
-            // If backend launches browser, nothing else needed
-            // If backend returns a URL, you can open it:
-            // window.open(data.url, "_blank");
-        })
-        .catch(err => console.error("Launch error:", err));
+    fetch(
+      `/tela/open/${scid}`,
+      {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Launcher-Token': AUTH_TOKEN
+        }
+      }
+    )
+    .then(r => r.json())
+    .then(data => {
+        console.log("Backend response:", data);
+        // If backend launches browser, nothing else needed
+        // If backend returns a URL, you can open it:
+        // window.open(data.url, "_blank");
+    })
+    .catch(err => console.error("Launch error:", err));
 }
 </script>
 
 </body>
 </html>
 """
+let searchHTMLClose =
+    searchHTMLCloseTemplate
+        .Replace("{{TOKEN}}", getToken())
+       
+
+
 
 (*
 
