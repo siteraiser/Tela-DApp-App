@@ -9,6 +9,7 @@ open Gnomon
 open Json
 open Htmlcontent
 open Dvm
+open System.Text
 
 type DocEntry =
     { scid: string
@@ -234,62 +235,35 @@ let getMime  (fileName : string option) =
     | _ -> "text/plain"
 
 let serve (context: HttpListenerContext) (entry: DocEntry) =
-    task {
-        let response = context.Response
-        printfn "entry: %A" (entry)
-        // 1. Load SCID source. 
-        let sccode  = entry.sccode |> optStringToRawJson
-
-        printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.file entry.scid entry.sccode
-
-        // 2. Extract embedded content
+    let response = context.Response
+    printfn "entry: %A" (entry)
+    printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.file entry.scid entry.sccode
+    // 1. Load SCID source. 
+    let sccode  = entry.sccode |> optStringToRawJson
+    let bytes, isGzip =
         match extractDvmComment sccode with
         | None ->
-            response.StatusCode <- 500
-            use w = new StreamWriter(response.OutputStream)
-            do! w.WriteAsync("No embedded content found")
-            response.Close()
-            return ()
+            Encoding.UTF8.GetBytes("No embedded content found"), false
 
         | Some content ->
-            
-
-
-            let fileName = Option.defaultValue "" entry.file
-            let baseNameOpt =
-                entry.file
-                |> Option.map (fun f ->
-                    if f.EndsWith(".gz") then f.Substring(0, f.Length - 3)
-                    else f
-                )
-
-            // 3. Determine MIME type
-            let mime = getMime baseNameOpt
-            printfn "SERVE: MIME = %s" mime
-            response.ContentType <- mime
-              
-
-
             let isGzipBase64 =
                 try
                     let b = Convert.FromBase64String(content)
                     b.[0] = 0x1Fuy && b.[1] = 0x8Buy
                 with _ -> false
-
+            
             if isGzipBase64 then
-                // Add gzip header if needed
-                response.AddHeader("Content-Encoding", "gzip")
-                printfn "isGzipBase64 = %b" isGzipBase64
-                 // Write raw bytes, NOT StreamWriter            
-                let bytes = Convert.FromBase64String(content)
-                response.OutputStream.Write(bytes, 0, bytes.Length)
+                Convert.FromBase64String(content), true
             else
-                // Write string content
-                use w = new StreamWriter(response.OutputStream)
-                do! w.WriteAsync(content)
-                do! w.FlushAsync()
-            response.Close()
-            return ()
+                Encoding.UTF8.GetBytes(content), false
+    if isGzip then
+        response.AddHeader("Content-Encoding", "gzip")
+    response.ContentLength64 <- int64 bytes.Length
+
+    task {       
+        do! response.OutputStream.WriteAsync(bytes, 0, bytes.Length)
+        response.OutputStream.Close()
+        return ()
     }
 
 
