@@ -224,14 +224,20 @@ let respond404 (context: HttpListenerContext) (msg: string) =
         do! w.WriteAsync(msg)
         response.Close()
     }
+let getMime  (fileName : string option) = 
+    match fileName with
+    | Some f when f.EndsWith(".html") -> "text/html"
+    | Some f when f.EndsWith(".css")  -> "text/css"
+    | Some f when f.EndsWith(".js")   -> "application/javascript"
+    | Some f when f.EndsWith(".json") -> "application/json"
+    | Some f when f.EndsWith(".txt")  -> "text/plain"
+    | _ -> "text/plain"
 
 let serve (context: HttpListenerContext) (entry: DocEntry) =
     task {
         let response = context.Response
         printfn "entry: %A" (entry)
         // 1. Load SCID source. 
-        // Future fix: try to get the already saved data from the entry lols
-      //  let! source = GetSC entry.scid
         let sccode  = entry.sccode |> optStringToRawJson
 
         printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.file entry.scid entry.sccode
@@ -246,32 +252,52 @@ let serve (context: HttpListenerContext) (entry: DocEntry) =
             return ()
 
         | Some content ->
+            
+
+
+            let fileName = Option.defaultValue "" entry.file
+            let baseNameOpt =
+                entry.file
+                |> Option.map (fun f ->
+                    if f.EndsWith(".gz") then f.Substring(0, f.Length - 3)
+                    else f
+                )
+
             // 3. Determine MIME type
-            let mime =
-                match entry.file with
-                | Some f when f.EndsWith(".html") -> "text/html"
-                | Some f when f.EndsWith(".css")  -> "text/css"
-                | Some f when f.EndsWith(".js")   -> "application/javascript"
-                | Some f when f.EndsWith(".json") -> "application/json"
-                | Some f when f.EndsWith(".txt")  -> "text/plain"
-                | _ -> "text/plain"
+            let mime = getMime baseNameOpt
             printfn "SERVE: MIME = %s" mime
             response.ContentType <- mime
+              
 
 
+            let isGzipBase64 =
+                try
+                    let b = Convert.FromBase64String(content)
+                    b.[0] = 0x1Fuy && b.[1] = 0x8Buy
+                with _ -> false
 
-            // 4. Write content
-            use w = new StreamWriter(response.OutputStream)
-            do! w.WriteAsync(content)
-            do! w.FlushAsync()
+            if isGzipBase64 then
+                // Add gzip header if needed
+                response.AddHeader("Content-Encoding", "gzip")
+                printfn "isGzipBase64 = %b" isGzipBase64
+                 // Write raw bytes, NOT StreamWriter            
+                let bytes = Convert.FromBase64String(content)
+                response.OutputStream.Write(bytes, 0, bytes.Length)
+            else
+                // Write string content
+                use w = new StreamWriter(response.OutputStream)
+                do! w.WriteAsync(content)
+                do! w.FlushAsync()
             response.Close()
             return ()
     }
+
+
+
 let handleInstanceFileRequest (context: HttpListenerContext) =
     task {
         let port = context.Request.Url.Port
         let raw = context.Request.Url.LocalPath
-
 
         let path =
             match raw with
@@ -299,18 +325,18 @@ let handleInstanceFileRequest (context: HttpListenerContext) =
             | true, instance ->
                 let dm = instance.docMap
                 match path with
-                | "" ->
-                    match dm.docs |> List.tryFind (fun d -> d.file = Some "index.html") with
-                    | Some entry -> return! serve context entry
-                    | None ->
-                        match dm.docs with
-                        | [single] -> return! serve context single
-                        | _ -> return! respond404 context "No index.html and multiple docs"
-
-                | file ->
+                | file -> // try to find the file
                     match dm.docs |> List.tryFind (fun d -> d.file = Some file) with
                     | Some entry -> return! serve context entry
-                    | None -> return! respond404 context "File not found"
+                    | None -> 
+                        let file = file + ".gz" // try to find a gzip version
+                        match dm.docs |> List.tryFind (fun d -> d.file = Some file) with
+                        | Some entry -> return! serve context entry
+                        | None ->
+                            match dm.docs with
+                            | [single] -> return! serve context single
+                            | _ -> return! respond404 context "No index.html and multiple docs"
+
     }
 
  

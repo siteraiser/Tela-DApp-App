@@ -5,16 +5,12 @@ let getJson value =
     let json = JsonSerializer.Serialize(value)
     value, json
 
-
 let optStringToRawJson  (v: string option) =
     match v with
     | Some s -> s
     | None -> "null"
 
-
-
 let optStringToJsonLiteral  (v: string option) =
-//optStringToJson must be wrong
     match v with
     | Some s -> $"\"{s}\""
     | None -> "null"
