@@ -240,11 +240,13 @@ let serve (context: HttpListenerContext) (entry: DocEntry) =
     printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.file entry.scid entry.sccode
     // 1. Load SCID source. 
     let sccode  = entry.sccode |> optStringToRawJson
+    //
     let bytes, isGzip =
         match extractDvmComment sccode with
         | None ->
+            response.StatusCode <- 500
             Encoding.UTF8.GetBytes("No embedded content found"), false
-
+            
         | Some content ->
             let isGzipBase64 =
                 try
