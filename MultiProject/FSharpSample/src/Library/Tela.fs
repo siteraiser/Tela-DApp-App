@@ -96,7 +96,7 @@ let enrichDocMap (dm: DocMap) =
 
             let filename =
                 tryGet ("nameHdr", vars)
-                |> Option.orElse (tryGet ("dURL", vars))
+               // |> Option.orElse (tryGet ("dURL", vars))
             let subdir = tryGet ("subDir", vars)
             let doctype  = tryGet ("docType", vars)
             let sccode  = tryGet ("C", vars)   // ← NEW
@@ -231,6 +231,7 @@ let getMime  (fileName : string option) =
     | Some f when f.EndsWith(".css")  -> "text/css"
     | Some f when f.EndsWith(".js")   -> "application/javascript"
     | Some f when f.EndsWith(".json") -> "application/json"
+    | Some f when f.EndsWith(".svg")  -> "image/svg+xml"
     | Some f when f.EndsWith(".txt")  -> "text/plain"
     | _ -> "text/plain"
 
@@ -259,9 +260,14 @@ let serve (context: HttpListenerContext) (entry: DocEntry) =
             else
                 Encoding.UTF8.GetBytes(content), false
     if isGzip then
+        let realFile =
+            entry.file |> Option.map (fun f -> if f.EndsWith(".gz") then f.Substring(0, f.Length - 3) else f)
+        response.ContentType <- getMime realFile    
         response.AddHeader("Content-Encoding", "gzip")
+    else
+        response.ContentType <- getMime entry.file   
     response.ContentLength64 <- int64 bytes.Length
-
+    
     task {       
         do! response.OutputStream.WriteAsync(bytes, 0, bytes.Length)
         response.OutputStream.Close()
