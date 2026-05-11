@@ -11,6 +11,7 @@ open Htmlcontent
 open Dvm
 open System.Text
 
+
 let requiredFunction = """Function Rate(r Uint64) Uint64
 10 DIM addr as String
 15 LET addr = address()
@@ -23,17 +24,21 @@ let requiredFunction = """Function Rate(r Uint64) Uint64
 70 STORE("dislikes", LOAD("dislikes")+1)
 100 RETURN 0
 End Function"""
+let normalize (s: string) =
+    s.Replace("\r\n", "\n")
+     .Replace("\r", "\n")
+     .Split('\n')
+     |> Array.map (fun line -> line.Trim())
+     |> Array.filter (fun line -> line <> "")
+     |> String.concat "\n"
 
-let containsRequiredFunction vars = 
-    let sccode = tryGetVar vars "C"
-    match sccode with
-    | None ->
-        false
+let containsRequiredFunction vars =
+    match tryGetVar vars "C" with
+    | None -> false
     | Some sccode ->
-        if sccode.Contains "requiredFunction" then
-            true
-        else
-            false
+        let a = normalize sccode
+        let b = normalize requiredFunction
+        a.Contains b
 
 let index args =
     task {
@@ -64,7 +69,7 @@ let index args =
                         | Some key, Some value when key.StartsWith("DOC") -> Some (key, value)
                         | _ -> None)                
 
-                if  docs.Length = 0 || containsRequiredFunction vars then
+                if  docs.Length = 0 || not(containsRequiredFunction vars) then
                     printfn "No documents found"
                 else
                     // Build the link
