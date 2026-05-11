@@ -11,6 +11,75 @@ open Htmlcontent
 open Dvm
 open System.Text
 
+let requiredFunction = """Function Rate(r Uint64) Uint64
+10 DIM addr as String
+15 LET addr = address()
+16 IF r < 100 && EXISTS(addr) == 0 && addr != "anon" THEN GOTO 30
+20 RETURN 1
+30 STORE(addr, ""+r+"_"+BLOCK_HEIGHT())
+40 IF r < 50 THEN GOTO 70
+50 STORE("likes", LOAD("likes")+1)
+60 RETURN 0
+70 STORE("dislikes", LOAD("dislikes")+1)
+100 RETURN 0
+End Function"""
+
+let containsRequiredFunction vars = 
+    let sccode = tryGetVar vars "C"
+    match sccode with
+    | None ->
+        false
+    | Some sccode ->
+        if sccode.Contains "requiredFunction" then
+            true
+        else
+            false
+
+let index args =
+    task {
+        // First call
+        let! height = GetLastIndexHeight
+        printfn "Output: %A" height
+       
+        // Second call
+        let! scids = getSCIDsByTags ["telaVersion"]       
+
+        let results = ResizeArray<string>()
+
+        for scid in scids do
+            let! vars = GetSCIDVariableDetailsAtTopoheight (scid, height)
+
+            // Extract nameHdr if present
+            let nameHdr = tryGetVar vars "nameHdr"
+            match nameHdr with
+            | None ->
+                printfn "SCID %s has no title" scid
+            | Some title ->
+                printfn "SCID %s → Title: %s" scid title
+                // Collect DOC1, DOC2, DOC3...
+                let docs =
+                    vars
+                    |> Array.choose (fun v ->
+                        match tryGetString v.Key, tryGetString v.Value with
+                        | Some key, Some value when key.StartsWith("DOC") -> Some (key, value)
+                        | _ -> None)                
+
+                if  docs.Length = 0 || containsRequiredFunction vars then
+                    printfn "No documents found"
+                else
+                    // Build the link
+                    results.Add($"<div><a href='#' data-scid='{scid}'>{title}</a>")
+                    let descrHdr = tryGetVar vars "descrHdr"
+                    match descrHdr with
+                    | None ->
+                        results.Add($"</div>")
+                    | Some descrHdr ->
+                        results.Add($"{descrHdr}</div>")
+
+        // Return all links joined by newlines
+        return "<div>" + String.concat "</div><div>" results + "</div>" 
+    }
+
 type DocEntry =
     { scid: string
       file: string option
@@ -71,6 +140,7 @@ let buildDocMap rootscid vars =
 
     { rootscid = rootscid; docs = docs }
 
+(*
 
 let tryGet (key: string, vars: ScidVariable array) =
     vars
@@ -79,7 +149,7 @@ let tryGet (key: string, vars: ScidVariable array) =
         | Some k -> k = key
         | None -> false)
     |> Option.bind (fun v -> jsonToOptString v.Value)
-
+*)
 
 let trimLeadingSlash (input: string) =
     if String.IsNullOrEmpty(input) then
@@ -95,11 +165,11 @@ let enrichDocMap (dm: DocMap) =
             let! vars = GetSC d.scid
 
             let filename =
-                tryGet ("nameHdr", vars)
+                tryGetVar vars "nameHdr" 
                // |> Option.orElse (tryGet ("dURL", vars))
-            let subdir = tryGet ("subDir", vars)
-            let doctype  = tryGet ("docType", vars)
-            let sccode  = tryGet ("C", vars)   // ← NEW
+            let subdir = tryGetVar vars "subDir"
+            let doctype  = tryGetVar vars "docType"
+            let sccode  = tryGetVar vars "C"
             let full =
                 [ subdir; filename ]
                 |> List.choose id

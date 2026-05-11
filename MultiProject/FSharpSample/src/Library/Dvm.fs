@@ -1,4 +1,5 @@
 module Dvm
+
 let extractDvmComment (source:string) =
     let startToken = "/*"
     let endToken = "*/"

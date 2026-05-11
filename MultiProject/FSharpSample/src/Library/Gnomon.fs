@@ -2,8 +2,7 @@ module Gnomon
 
 open System.Net.Http
 open System.Text.Json
-
-
+open Dvm
 
 let http = new HttpClient()
 
@@ -51,9 +50,21 @@ let getSCIDsByTags (tags: string list) =
 type ScidVariable =
     { Key: JsonElement
       Value: JsonElement }
-
 type ScResponse =
     { variables: ScidVariable[] }
+
+let tryGetString (e: JsonElement) =
+    match e.ValueKind with
+    | JsonValueKind.String -> Some(e.GetString())
+    | JsonValueKind.Number -> Some(e.GetRawText())
+    | _ -> None
+
+let tryGetVar (vars: ScidVariable array) (name: string) =
+    vars
+    |> Array.tryPick (fun v ->
+        if tryGetString v.Key = Some name then
+            tryGetString v.Value
+        else None)
 
 let GetSCIDVariableDetailsAtTopoheight (scid: string, height: string) =
     task {
@@ -88,63 +99,4 @@ let GetSC (scid: string) =
         let scResponse =
             JsonSerializer.Deserialize<ScResponse>(body, opts)
         return scResponse.variables
-    }
-let tryGetString (e: JsonElement) =
-    match e.ValueKind with
-    | JsonValueKind.String -> Some(e.GetString())
-    | JsonValueKind.Number -> Some(e.GetRawText())
-    | _ -> None
-
-
-let index args =
-    task {
-        // First call
-        let! height = GetLastIndexHeight
-        printfn "Output: %A" height
-       
-        // Second call
-        let! scids = getSCIDsByTags ["telaVersion"]       
-
-        let results = ResizeArray<string>()
-
-        for scid in scids do
-            let! vars = GetSCIDVariableDetailsAtTopoheight (scid, height)
-
-            // Extract nameHdr if present
-            let nameHdr =
-                vars
-                |> Array.tryPick (fun v ->
-                    match tryGetString v.Key, tryGetString v.Value with
-                    | Some "nameHdr", Some value when value <> "" -> Some value
-                    | _ -> None)
-
-            match nameHdr with
-            | None ->
-                printfn "SCID %s has no title" scid
-
-            | Some title ->
-                printfn "SCID %s → Title: %s" scid title
-
-                // Collect DOC1, DOC2, DOC3...
-                let docs =
-                    vars
-                    |> Array.choose (fun v ->
-                        match tryGetString v.Key, tryGetString v.Value with
-                        | Some key, Some value when key.StartsWith("DOC") -> Some (key, value)
-                        | _ -> None)
-
-                if docs.Length = 0 then
-                    printfn "  No documents found"
-                else
-            
-                    let orderedDocs =
-                        docs |> Array.sortBy fst
-                    for (key, docScid) in orderedDocs do
-                        printfn "  %s → %s" key docScid
-                   
-                // Build the link
-                results.Add($"<a href='#' data-scid='{scid}'>{title}</a>")
-
-        // Return all links joined by newlines
-        return String.concat "<br>" results
     }
