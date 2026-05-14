@@ -5,7 +5,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <ItemGroup>    
+  <ItemGroup>  
+    <Compile Include="Globalstate.fs" />  
     <Compile Include="Json.fs" />
     <Compile Include="Dvm.fs" />
     <Compile Include="Gnomon.fs" />

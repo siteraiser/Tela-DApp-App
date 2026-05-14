@@ -2,63 +2,7 @@
   "version": 3,
   "targets": {
     "net10.0": {
-      "FSharp.Core/10.1.203": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.1/FSharp.Core.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.1/FSharp.Core.dll": {
-            "related": ".xml"
-          }
-        },
-        "resource": {
-          "lib/netstandard2.1/cs/FSharp.Core.resources.dll": {
-            "locale": "cs"
-          },
-          "lib/netstandard2.1/de/FSharp.Core.resources.dll": {
-            "locale": "de"
-          },
-          "lib/netstandard2.1/es/FSharp.Core.resources.dll": {
-            "locale": "es"
-          },
-          "lib/netstandard2.1/fr/FSharp.Core.resources.dll": {
-            "locale": "fr"
-          },
-          "lib/netstandard2.1/it/FSharp.Core.resources.dll": {
-            "locale": "it"
-          },
-          "lib/netstandard2.1/ja/FSharp.Core.resources.dll": {
-            "locale": "ja"
-          },
-          "lib/netstandard2.1/ko/FSharp.Core.resources.dll": {
-            "locale": "ko"
-          },
-          "lib/netstandard2.1/pl/FSharp.Core.resources.dll": {
-            "locale": "pl"
-          },
-          "lib/netstandard2.1/pt-BR/FSharp.Core.resources.dll": {
-            "locale": "pt-BR"
-          },
-          "lib/netstandard2.1/ru/FSharp.Core.resources.dll": {
-            "locale": "ru"
-          },
-          "lib/netstandard2.1/tr/FSharp.Core.resources.dll": {
-            "locale": "tr"
-          },
-          "lib/netstandard2.1/zh-Hans/FSharp.Core.resources.dll": {
-            "locale": "zh-Hans"
-          },
-          "lib/netstandard2.1/zh-Hant/FSharp.Core.resources.dll": {
-            "locale": "zh-Hant"
-          }
-        }
-      }
-    },
-    "net10.0/win-x64": {
-      "FSharp.Core/10.1.203": {
+      "FSharp.Core/10.1.204": {
         "type": "package",
         "compile": {
           "lib/netstandard2.1/FSharp.Core.dll": {
@@ -115,15 +59,15 @@
     }
   },
   "libraries": {
-    "FSharp.Core/10.1.203": {
-      "sha512": "I2MFk72yHqfgI594gKFigq8PVIso0Mh1ZUgG9R4n8gyYQ4IwpBxmvecfjnKA7iMLdVHYULB70PsLwYW/K76gew==",
+    "FSharp.Core/10.1.204": {
+      "sha512": "f2HG4CIS+sfFuRY7DYnEa6P/qEW2g4b6O54jcDD9OkDewWlbk7sd2dbL+Enm3/tVSEsMrgQA7m1+smdizBC6fg==",
       "type": "package",
-      "path": "fsharp.core/10.1.203",
+      "path": "fsharp.core/10.1.204",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
-        "fsharp.core.10.1.203.nupkg.sha512",
+        "fsharp.core.10.1.204.nupkg.sha512",
         "fsharp.core.nuspec",
         "lib/netstandard2.0/FSharp.Core.dll",
         "lib/netstandard2.0/FSharp.Core.xml",
@@ -160,7 +104,7 @@
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "FSharp.Core >= 10.1.203"
+      "FSharp.Core >= 10.1.204"
     ]
   },
   "packageFolders": {
@@ -182,7 +126,7 @@
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files\\dotnet\\sdk\\10.0.203\\FSharp\\library-packs": {},
+        "C:\\Program Files\\dotnet\\sdk\\10.0.204\\FSharp\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -205,7 +149,7 @@
           "FSharp.Core": {
             "include": "Runtime, Compile, Build, Native, Analyzers, BuildTransitive",
             "target": "Package",
-            "version": "[10.1.203, )",
+            "version": "[10.1.204, )",
             "generatePathProperty": true
           }
         },
@@ -220,26 +164,12 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "downloadDependencies": [
-          {
-            "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-            "version": "[10.0.7, 10.0.7]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Runtime.win-x64",
-            "version": "[10.0.7, 10.0.7]"
-          },
-          {
-            "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
-            "version": "[10.0.7, 10.0.7]"
-          }
-        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.204/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -514,11 +444,6 @@
           "System.Xml.XPath": "(,4.3.32767]",
           "System.Xml.XPath.XDocument": "(,5.0.32767]"
         }
-      }
-    },
-    "runtimes": {
-      "win-x64": {
-        "#import": []
       }
     }
   }

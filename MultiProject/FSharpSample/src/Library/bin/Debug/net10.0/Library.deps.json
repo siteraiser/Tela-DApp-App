@@ -8,17 +8,17 @@
     ".NETCoreApp,Version=v10.0": {
       "Library/1.0.0": {
         "dependencies": {
-          "FSharp.Core": "10.1.203"
+          "FSharp.Core": "10.1.204"
         },
         "runtime": {
           "Library.dll": {}
         }
       },
-      "FSharp.Core/10.1.203": {
+      "FSharp.Core/10.1.204": {
         "runtime": {
           "lib/netstandard2.1/FSharp.Core.dll": {
             "assemblyVersion": "10.1.0.0",
-            "fileVersion": "10.102.326.22005"
+            "fileVersion": "10.102.426.23114"
           }
         },
         "resources": {
@@ -71,12 +71,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "FSharp.Core/10.1.203": {
+    "FSharp.Core/10.1.204": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-I2MFk72yHqfgI594gKFigq8PVIso0Mh1ZUgG9R4n8gyYQ4IwpBxmvecfjnKA7iMLdVHYULB70PsLwYW/K76gew==",
-      "path": "fsharp.core/10.1.203",
-      "hashPath": "fsharp.core.10.1.203.nupkg.sha512"
+      "sha512": "sha512-f2HG4CIS+sfFuRY7DYnEa6P/qEW2g4b6O54jcDD9OkDewWlbk7sd2dbL+Enm3/tVSEsMrgQA7m1+smdizBC6fg==",
+      "path": "fsharp.core/10.1.204",
+      "hashPath": "fsharp.core.10.1.204.nupkg.sha512"
     }
   }
 }

@@ -1,13 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "ZSyaBvGyhmM=",
+  "dgSpecHash": "4SWGivBF+NM=",
   "success": true,
   "projectFilePath": "C:\\fsharp\\MultiProject\\FSharpSample\\src\\Library\\Library.fsproj",
   "expectedPackageFiles": [
-    "C:\\Users\\carl\\.nuget\\packages\\fsharp.core\\10.1.203\\fsharp.core.10.1.203.nupkg.sha512",
-    "C:\\Users\\carl\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\10.0.7\\microsoft.netcore.app.runtime.win-x64.10.0.7.nupkg.sha512",
-    "C:\\Users\\carl\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\10.0.7\\microsoft.windowsdesktop.app.runtime.win-x64.10.0.7.nupkg.sha512",
-    "C:\\Users\\carl\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\10.0.7\\microsoft.aspnetcore.app.runtime.win-x64.10.0.7.nupkg.sha512"
+    "C:\\Users\\carl\\.nuget\\packages\\fsharp.core\\10.1.204\\fsharp.core.10.1.204.nupkg.sha512"
   ],
   "logs": []
 }

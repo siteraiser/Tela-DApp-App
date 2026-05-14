@@ -2,7 +2,6 @@ module Gnomon
 
 open System.Net.Http
 open System.Text.Json
-open Dvm
 
 let http = new HttpClient()
 

@@ -3,8 +3,7 @@ module Tela
 open System
 open System.Net
 open System.IO
-open System.Diagnostics
-open System.Collections.Concurrent
+open Globalstate
 open Gnomon
 open Json
 open Htmlcontent
@@ -85,30 +84,6 @@ let index args =
         return "<div>" + String.concat "</div><div>" results + "</div>" 
     }
 
-type DocEntry =
-    { scid: string
-      file: string option
-      doctype: string option 
-      sccode: string option }
-
-type DocMap =
-    { rootscid: string
-      docs: DocEntry list }
-
-type InstanceState =
-    { scid     : string
-      docMap    : DocMap }
-
-module DocStore =
-
-    let mutable private store : Map<string, DocMap> = Map.empty
-
-    let tryGet scid =
-        store |> Map.tryFind scid
-
-    let add scid docMap =
-        store <- store.Add(scid, docMap)
-
 
 
 let search (context: HttpListenerContext) =
@@ -125,13 +100,6 @@ let search (context: HttpListenerContext) =
         response.Close()
     }
 
-let isTelaProtocolRequest (path: string) =
-    path.StartsWith("/tela/open/")
-
-let isActiveInstanceRequest (ctx: HttpListenerContext) =
-    ctx.Request.Url.Port <> 8081
-
-
 
 let buildDocMap rootscid vars =
     let docs =
@@ -145,16 +113,6 @@ let buildDocMap rootscid vars =
 
     { rootscid = rootscid; docs = docs }
 
-(*
-
-let tryGet (key: string, vars: ScidVariable array) =
-    vars
-    |> Array.tryFind (fun v ->
-        match jsonToOptString v.Key with
-        | Some k -> k = key
-        | None -> false)
-    |> Option.bind (fun v -> jsonToOptString v.Value)
-*)
 
 let trimLeadingSlash (input: string) =
     if String.IsNullOrEmpty(input) then
@@ -224,73 +182,12 @@ let handleOpen scid = task {
 }
 
 
-let scidToPort = ConcurrentDictionary<string, int>()
-let portToScid = ConcurrentDictionary<int, string>()
-let portToInstance = ConcurrentDictionary<int, InstanceState>()
-//let instances = Dictionary<int, InstanceState>()
-
-let instances = ConcurrentDictionary<int, InstanceState>()
-
-
-let pickPort () =
-    [8082..8090]
-    |> List.tryFind (fun p -> not (portToScid.ContainsKey p))
-
-// handles the ajax request from the initial search page
-let handleTelaProtocol (context: HttpListenerContext) =
-    task {
-        let path = context.Request.Url.LocalPath
-        let response = context.Response
-        use writer = new StreamWriter(response.OutputStream)
-
-        printfn "TELA PROTOCOL: Raw path = %s" path
-
-        let prefix = "/tela/open/"
-        let scid =
-            if path.StartsWith(prefix) then
-                path.Substring(prefix.Length)
-            else
-                printfn "TELA PROTOCOL: Invalid open path"
-                ""
-
-        printfn "TELA PROTOCOL: Extracted SCID = %s" scid
-        printfn "TELA PROTOCOL: Launching instance..."
-
-        // Load DocMap (async)
-        let! enrichedDocMap = handleOpen scid
-
-        // Pick or reuse a port
-        let port =
-            match scidToPort.TryGetValue scid with
-            | true, p -> p
-            | false, _ ->
-                match pickPort () with
-                | Some p ->
-                    scidToPort.[scid] <- p
-                    portToScid.[p] <- scid
-                    p
-                | None ->
-                    failwith "No available port"
-
-        // Create instance state
-        let instance =
-            { scid = scid
-              docMap = enrichedDocMap }
-
-        portToInstance.[port] <- instance
-
-        printfn "Instance ready on port %d" port
-
-        // Launch browser AFTER instance is ready
-        let url = $"http://localhost:{port}/"
-        Process.Start(ProcessStartInfo(url, UseShellExecute = true)) |> ignore
-
-        // Respond to AJAX caller
-        do! writer.WriteAsync("{'scid':'" + scid + "'}")
-        do! writer.FlushAsync()
-
-        response.Close()
-    }
+let extractScidFromOpenPath (path: string) =
+    let prefix = "/tela/open/"
+    if path.StartsWith(prefix) then
+        Some (path.Substring(prefix.Length))
+    else
+        None
 
 let respond404 (context: HttpListenerContext) (msg: string) =
     task {
