@@ -14,38 +14,69 @@ html, body {
 }
 a {color:lightgreen}
 
-input#scid_input{  
-  background:#ffffff00;
-  border-radius: 5px 0px 5px 5px;
-}
 
-input#scid_input[type="text"] {
-  color: #eee;
-  border: 2px solid gray;
-}
-
-input#scid_input[type="text"]:focus {
-  color: #eef; 
-  border-color: blue; 
-}
 
 header {
   background:#244;
   padding:5px;
+  display: flex;
+  justify-content: space-around;
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 1em;
 }
+header div {
+    display: flex;
+    justify-content: center;   
+    align-items: center; 
+    gap: 0.5rem;
+    flex-wrap: wrap; 
+    margin-bottom: 1rem; 
+}
+
+
+header input[type="text"], header button  {
+  color: #eee;
+  background:#ffffff00;
+  border: 2px solid gray;    
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+}
+
+header input[type="text"]:focus {
+  color: #eef; 
+  border-color: blue; 
+}
+
+header button {
+    padding: 0.4rem 0.8rem;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
 main > div {
   margin:3px;
-  padding: 3px 5px;
+  padding: 5px 8px;
   background:#244;
   border: solid 1px #000b53;
   border-radius: 5px;
 }
+
+.hidden{display:none;}
+
 </style>
 </head>
 <body>
 <header>
+<div>
 <input id="scid_input" type="text" placeholder="Tela Index SCID">
-<button id="load_button">Load SCID</button>
+<button id="load_button">Load SCID</button> 
+</div>
+<div>
+<input id="owner_input" type="text" placeholder="Enter anon or Dero Address">
+<button id="owner_button">Filter by Owner</button>
+</div>
 </header>
 
 <main>
@@ -56,9 +87,8 @@ let searchHTMLCloseTemplate = """
 <script>
 const AUTH_TOKEN = "{{TOKEN}}";
 
-
-
 document.addEventListener("DOMContentLoaded", () => {
+
     // Create event handler for manual SCID loads
     const scidInput = document.getElementById("scid_input");
     const loadButton = document.getElementById("load_button");
@@ -66,6 +96,26 @@ document.addEventListener("DOMContentLoaded", () => {
             const scid = scidInput.value;
             launch(scid);
      });
+
+    // Create event handler to filter by address
+    const ownerInput = document.getElementById("owner_input");
+    const ownerButton = document.getElementById("owner_button");
+    // Add hidden class to all addresses that don't match the supplied address
+    ownerButton.addEventListener("click", e => {
+        const owner = ownerInput.value.trim();
+        const links = document.querySelectorAll("a[data-owner]");
+
+        links.forEach(link => {
+            const linkOwner = link.getAttribute("data-owner");
+
+            if (owner === "" || linkOwner === owner) {
+                link.parentElement.parentElement.classList.remove("hidden");
+            } else {
+                link.parentElement.parentElement.classList.add("hidden");
+            }
+        });
+    });
+
 
     const links = document.getElementsByTagName("a");
 

@@ -4,14 +4,15 @@ open System.Collections.Concurrent
 
 
 type DocEntry =
-    { scid: string
-      file: string option
-      doctype: string option 
-      sccode: string option }
+    {   scid: string 
+        file: string option
+        doctype: string option 
+        sccode: string option }
 
 type DocMap =
-    { rootscid: string
-      docs: DocEntry list }
+    {   rootscid: string
+       // owner: string option
+        docs: DocEntry list }
 
 type InstanceState =
     { scid     : string

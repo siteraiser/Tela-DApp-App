@@ -53,7 +53,7 @@ let index args =
 
         for scid in scids do
             let! vars = GetSCIDVariableDetailsAtTopoheight (scid, height)
-
+            
             // Extract nameHdr if present
             let nameHdr = tryGetVar vars "nameHdr"
             match nameHdr with
@@ -73,8 +73,12 @@ let index args =
                     printfn "No documents found"
                 else
                     let safeTitle = encodeForHtml title
+                    let ownerTxt =
+                        match tryGetVar vars "owner" with
+                        | None -> "anon"
+                        | Some o -> o
                     // Build the link
-                    results.Add($"<div><a href='#' data-scid='{scid}'>{safeTitle}</a>")
+                    results.Add($"<div><a href='#' data-scid='{scid}' data-owner='{ownerTxt}'>{safeTitle}</a>")
                     let descrHdr = tryGetVar vars "descrHdr"
                     match descrHdr with
                     | None ->
@@ -105,14 +109,16 @@ let search (context: HttpListenerContext) =
 
 
 let buildDocMap rootscid vars =
+
+    //let owner = tryGetVar vars "owner"
+    let vars = vars |> Array.toList
     let docs =
         vars
         |> List.choose (fun v ->
-            let key = tryGetString v.Key
-            let value = tryGetString v.Value
-            match key, value with
-            | Some key, Some value when key.StartsWith("DOC") -> Some { scid = value; doctype = None; file = None; sccode = None }
-            | _ -> None)
+            match tryGetString v.Key, tryGetString v.Value with
+            | Some key, Some value when key.StartsWith("DOC") ->
+                Some { scid = value; doctype = None; file = None; sccode = None }
+            | _ -> None)   
 
     { rootscid = rootscid; docs = docs }
 
@@ -174,7 +180,7 @@ let handleOpen scid = task {
 
     | None ->
         let! vars = GetSCIDVariableDetailsAtTopoheight (scid, "100000000")
-        let vars = vars |> Array.toList
+        //let vars = vars |> Array.toList
         let dm = buildDocMap scid vars
         let! enriched = enrichDocMap dm
 
