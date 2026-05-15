@@ -3,13 +3,70 @@ module Htmlcontent
 open Security
 let searchHTMLOpen = """<!doctype html>
 <html>
+<head>
+<meta charset="utf-8">
+<style>
+html, body {
+  margin:0;
+  padding:0;
+  background:#222;
+  color:#eee;
+}
+a {color:lightgreen}
+
+input#scid_input{  
+  background:#ffffff00;
+  border-radius: 5px 0px 5px 5px;
+}
+
+input#scid_input[type="text"] {
+  color: #eee;
+  border: 2px solid gray;
+}
+
+input#scid_input[type="text"]:focus {
+  color: #eef; 
+  border-color: blue; 
+}
+
+header {
+  background:#244;
+  padding:5px;
+}
+main > div {
+  margin:3px;
+  padding: 3px 5px;
+  background:#244;
+  border: solid 1px #000b53;
+  border-radius: 5px;
+}
+</style>
+</head>
 <body>
+<header>
+<input id="scid_input" type="text" placeholder="Tela Index SCID">
+<button id="load_button">Load SCID</button>
+</header>
+
+<main>
 """
 
 let searchHTMLCloseTemplate = """
+</main>
 <script>
 const AUTH_TOKEN = "{{TOKEN}}";
+
+
+
 document.addEventListener("DOMContentLoaded", () => {
+    // Create event handler for manual SCID loads
+    const scidInput = document.getElementById("scid_input");
+    const loadButton = document.getElementById("load_button");
+    loadButton.addEventListener("click", e => {
+            const scid = scidInput.value;
+            launch(scid);
+     });
+
     const links = document.getElementsByTagName("a");
 
     // Convert HTMLCollection → Array so we can loop cleanly
@@ -43,7 +100,6 @@ function launch(scid) {
     .catch(err => console.error("Launch error:", err));
 }
 </script>
-
 </body>
 </html>
 """

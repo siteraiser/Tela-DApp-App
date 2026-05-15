@@ -4,6 +4,7 @@ open System
 open System.Net
 open System.IO
 open Globalstate
+open Security
 open Gnomon
 open Json
 open Htmlcontent
@@ -71,14 +72,16 @@ let index args =
                 if  docs.Length = 0 || not(containsRequiredFunction vars) then
                     printfn "No documents found"
                 else
+                    let safeTitle = encodeForHtml title
                     // Build the link
-                    results.Add($"<div><a href='#' data-scid='{scid}'>{title}</a>")
+                    results.Add($"<div><a href='#' data-scid='{scid}'>{safeTitle}</a>")
                     let descrHdr = tryGetVar vars "descrHdr"
                     match descrHdr with
                     | None ->
                         results.Add($"</div>")
                     | Some descrHdr ->
-                        results.Add($"{descrHdr}</div>")
+                        let safeDescrHdr = encodeForHtml descrHdr
+                        results.Add($"{safeDescrHdr}</div>")
 
         // Return all links joined by newlines
         return "<div>" + String.concat "</div><div>" results + "</div>" 

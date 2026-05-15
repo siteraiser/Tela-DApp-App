@@ -31,7 +31,6 @@ module DocStore =
 let scidToPort = ConcurrentDictionary<string, int>()
 let portToScid = ConcurrentDictionary<int, string>()
 let portToInstance = ConcurrentDictionary<int, InstanceState>()
-let instances = ConcurrentDictionary<int, InstanceState>()
 
 let pickPort () =
     let tcp = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0)
