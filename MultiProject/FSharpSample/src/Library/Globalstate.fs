@@ -7,11 +7,13 @@ type DocEntry =
     {   scid: string 
         file: string option
         doctype: string option 
-        sccode: string option }
+        sccode: string option 
+        verified: bool }
 
 type DocMap =
     {   rootscid: string
-       // owner: string option
+        version: string option
+        owner: string option
         docs: DocEntry list }
 
 type InstanceState =

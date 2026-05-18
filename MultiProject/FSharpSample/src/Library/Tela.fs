@@ -3,6 +3,9 @@ module Tela
 open System
 open System.Net
 open System.IO
+open TelaCrypto
+open TelaCrypto.G1
+open TelaCrypto.Signature
 open Globalstate
 open Security
 open Gnomon
@@ -10,35 +13,9 @@ open Json
 open Htmlcontent
 open Dvm
 open System.Text
+open Telavalidation
 
 
-let requiredFunction = """Function Rate(r Uint64) Uint64
-10 DIM addr as String
-15 LET addr = address()
-16 IF r < 100 && EXISTS(addr) == 0 && addr != "anon" THEN GOTO 30
-20 RETURN 1
-30 STORE(addr, ""+r+"_"+BLOCK_HEIGHT())
-40 IF r < 50 THEN GOTO 70
-50 STORE("likes", LOAD("likes")+1)
-60 RETURN 0
-70 STORE("dislikes", LOAD("dislikes")+1)
-100 RETURN 0
-End Function"""
-let normalize (s: string) =
-    s.Replace("\r\n", "\n")
-     .Replace("\r", "\n")
-     .Split('\n')
-     |> Array.map (fun line -> line.Trim())
-     |> Array.filter (fun line -> line <> "")
-     |> String.concat "\n"
-
-let containsRequiredFunction vars =
-    match tryGetVar vars "C" with
-    | None -> false
-    | Some sccode ->
-        let a = normalize sccode
-        let b = normalize requiredFunction
-        a.Contains b
 
 let index args =
     task {
@@ -54,9 +31,12 @@ let index args =
         for scid in scids do
             let! vars = GetSCIDVariableDetailsAtTopoheight (scid, height)
             
-            // Extract nameHdr if present
-            let nameHdr = tryGetVar vars "nameHdr"
-            match nameHdr with
+            let title =
+                [ "nameHdr"
+                  "var_header_name" ]
+                |> List.tryPick (fun key -> tryGetVar vars key)
+
+            match title with
             | None ->
                 printfn "SCID %s has no title" scid
             | Some title ->
@@ -69,7 +49,7 @@ let index args =
                         | Some key, Some value when key.StartsWith("DOC") -> Some (key, value)
                         | _ -> None)                
 
-                if  docs.Length = 0 || not(containsRequiredFunction vars) then
+                if  docs.Length = 0 || not(indexContainsRequiredFunctions vars) then
                     printfn "No documents found"
                 else
                     let safeTitle = encodeForHtml title
@@ -79,12 +59,16 @@ let index args =
                         | Some o -> o
                     // Build the link
                     results.Add($"<div><a href='#' data-scid='{scid}' data-owner='{ownerTxt}'>{safeTitle}</a>")
-                    let descrHdr = tryGetVar vars "descrHdr"
-                    match descrHdr with
+
+                    let description =
+                        [ "descrHdr"
+                          "var_header_description" ]
+                        |> List.tryPick (fun key -> tryGetVar vars key)
+                    match description with
                     | None ->
                         results.Add($"</div>")
-                    | Some descrHdr ->
-                        let safeDescrHdr = encodeForHtml descrHdr
+                    | Some description ->
+                        let safeDescrHdr = encodeForHtml description
                         results.Add($"{safeDescrHdr}</div>")
 
         // Return all links joined by newlines
@@ -110,17 +94,18 @@ let search (context: HttpListenerContext) =
 
 let buildDocMap rootscid vars =
 
-    //let owner = tryGetVar vars "owner"
+    let owner = tryGetVar vars "owner"
+    let version = tryGetVar vars "telaVersion"
     let vars = vars |> Array.toList
     let docs =
         vars
         |> List.choose (fun v ->
             match tryGetString v.Key, tryGetString v.Value with
             | Some key, Some value when key.StartsWith("DOC") ->
-                Some { scid = value; doctype = None; file = None; sccode = None }
+                Some { scid = value; doctype = None; file = None; sccode = None; verified = false }
             | _ -> None)   
 
-    { rootscid = rootscid; docs = docs }
+    { rootscid = rootscid; version = version; owner = owner; docs = docs }
 
 
 let trimLeadingSlash (input: string) =
@@ -129,6 +114,21 @@ let trimLeadingSlash (input: string) =
     else
         input.TrimStart('/')
 
+
+let checkSignature (message: byte[]) (address: string) (cHex: string) (sHex: string) =
+    match tryParseBigIntHex cHex, tryParseBigIntHex sHex with
+    | Some c, Some s ->
+        let pubKey = Address.decodeDeroAddressToG1 address
+        printfn "Owner pubKey: %s" (pointToString pubKey)
+
+        let ok = verifySignature pubKey c s message
+        printfn "Signature valid? %b" ok
+        ok
+
+    | _ ->
+        printfn "Invalid signature fields: cHex=%A sHex=%A" cHex sHex
+        false
+
 let enrichDocMap (dm: DocMap) =
     task {
         let mutable newDocs = []
@@ -136,39 +136,75 @@ let enrichDocMap (dm: DocMap) =
         for d in dm.docs do
             let! vars = GetSC d.scid
 
-            let filename =
-                tryGetVar vars "nameHdr" 
-               // |> Option.orElse (tryGet ("dURL", vars))
-            let subdir = tryGetVar vars "subDir"
-            let doctype  = tryGetVar vars "docType"
-            let sccode  = tryGetVar vars "C"
-            let full =
-                [ subdir; filename ]
-                |> List.choose id
-                |> String.concat "/"
+            // If SCID is invalid or missing, return a stub entry
+            if isNull vars then
+                printfn "Error loading SCID %s" d.scid
+                newDocs <- { d with verified = false; file = None; doctype = None; sccode = None } :: newDocs
 
-            let toStringOption (input: string) : string option =
-                match input with
-                | null -> None                      // Handle null
-                | s when String.IsNullOrWhiteSpace s -> None // Handle empty/whitespace
-                | s -> Some s       
-                     
-            let full = trimLeadingSlash full
-            let file = toStringOption full 
-          
-            printfn "Loaded SCID %s: file=%A doctype=%A C_length=%A"
-                d.scid file doctype (sccode |> Option.map String.length)
+            else
+                printfn "Enriching SCID %s" d.scid
 
-            let updated =
-                { d with
-                    file = file
-                    doctype  = doctype 
-                    sccode =  sccode }
+                // Helper: safe lookup
+                let get key = tryGetVar vars key
 
-            newDocs <- updated :: newDocs
+                // Metadata
+                let filename =
+                    [ "nameHdr"; "var_header_name" ]
+                    |> List.tryPick get
+
+                let subdir   = get "subDir"
+                let doctype  = get "docType"
+                let sccode   = get "C"
+
+                // Signature fields
+                let owner        = get "owner" |> Option.defaultValue "error"
+                let cHex         = get "fileCheckC" |> Option.defaultValue ""
+                let sHex         = get "fileCheckS" |> Option.defaultValue ""
+                let mapOwner     = dm.owner |> Option.defaultValue "error"
+                let docImmutable = owner = "anon"
+                let mapImmutable = mapOwner = "anon"
+
+                // Extract comment
+                let testCodeBytes =
+                    sccode
+                    |> Option.bind extractDvmComment
+                    |> Option.map System.Text.Encoding.UTF8.GetBytes
+                    |> Option.defaultValue [||]
+
+                // Signature verification
+                let verified =
+                    if docImmutable then
+                        true
+                    else
+                        printfn "verifying address %s" owner
+                        let ok = checkSignature testCodeBytes owner cHex sHex
+                        ok || (docImmutable && docContainsRequiredFunctions vars)
+
+                // Build file path
+                let file =
+                    [ subdir; filename ]
+                    |> List.choose id
+                    |> String.concat "/"
+                    |> trimLeadingSlash
+                    |> function
+                        | null | "" -> None
+                        | s -> Some s
+
+                printfn "Loaded SCID %s: file=%A doctype=%A C_length=%A"
+                    d.scid file doctype (sccode |> Option.map String.length)
+
+                newDocs <-
+                    { d with
+                        file     = file
+                        doctype  = doctype
+                        sccode   = sccode
+                        verified = verified
+                    }
+                    :: newDocs
 
         return { dm with docs = List.rev newDocs }
     }
+
 
 
 
@@ -218,11 +254,11 @@ let getMime  (fileName : string option) =
 
 let serve (context: HttpListenerContext) (entry: DocEntry) =
     let response = context.Response
-    printfn "entry: %A" (entry)
-    printfn "SERVE: Serving file %A for SCID %s \n Code %A" entry.file entry.scid entry.sccode
+    //printfn "entry: %A" (entry)
+    printfn "SERVE: Serving file %A for SCID %s \n " entry.file entry.scid //entry.sccode
     // 1. Load SCID source. 
     let sccode  = entry.sccode |> optStringToRawJson
-    //
+
     let bytes, isGzip =
         match extractDvmComment sccode with
         | None ->
@@ -230,6 +266,7 @@ let serve (context: HttpListenerContext) (entry: DocEntry) =
             Encoding.UTF8.GetBytes("No embedded content found"), false
             
         | Some content ->
+            
             let isGzipBase64 =
                 try
                     let b = Convert.FromBase64String(content)

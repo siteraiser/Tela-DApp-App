@@ -73,8 +73,7 @@ let waitForApi (url: string) =
 
 let handleTelaRequest (context: HttpListenerContext,port:int) =
     
-    task {            
-        let path = context.Request.Url.LocalPath
+    task {  
         if portToScid.ContainsKey port then
             printfn "handling instance request on port %d" port
             do! handleInstanceFileRequest context
