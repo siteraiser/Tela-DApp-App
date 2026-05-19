@@ -113,7 +113,11 @@ let trimLeadingSlash (input: string) =
         input // Return as-is if null or empty
     else
         input.TrimStart('/')
-
+let trimTrailingSlash (input: string) =
+    if String.IsNullOrEmpty(input) then
+        input // Return as-is if null or empty
+    else
+        input.TrimEnd('/')
 
 let checkSignature (message: byte[]) (address: string) (cHex: string) (sHex: string) =
     match tryParseBigIntHex cHex, tryParseBigIntHex sHex with
@@ -151,8 +155,9 @@ let enrichDocMap (dm: DocMap) =
                 let filename =
                     [ "nameHdr"; "var_header_name" ]
                     |> List.tryPick get
-
-                let subdir   = get "subDir"
+                    |> Option.map trimLeadingSlash
+                
+                let subdir   = get "subDir" |> Option.map trimLeadingSlash |> Option.map trimTrailingSlash
                 let doctype  = get "docType"
                 let sccode   = get "C"
 
