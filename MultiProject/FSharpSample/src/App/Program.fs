@@ -10,6 +10,12 @@ open System.IO
 // Build command:dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
 let listener = new HttpListener()
 
+let extractScidFromOpenPath (path: string) =
+    let prefix = "/tela/open/"
+    if path.StartsWith(prefix) then
+        Some (path.Substring(prefix.Length))
+    else
+        None
 
 let handleOpenRequest (context: HttpListenerContext) =
     task {

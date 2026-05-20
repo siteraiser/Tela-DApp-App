@@ -62,7 +62,7 @@ module Signature =
 
 
         let cCalculated = hashToScalar serialize
-        printfn "F# c': %A" cCalculated
+        //printfn "F# c': %A" cCalculated
         c = cCalculated
 
 
