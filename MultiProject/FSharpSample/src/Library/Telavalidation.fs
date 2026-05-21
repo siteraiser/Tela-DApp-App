@@ -69,7 +69,6 @@ End Function"""
 
 
 
-
 // Pre-normalize templates once
 let rateNorm = normalize requiredRateFunction
 let updateV1_0Norm = normalize requiredUpdateFunctionV1_0
@@ -89,6 +88,8 @@ let hasRequiredFunctionsV1_1 code =
     let code = normalize code
     code.Contains rateNorm &&
     code.Contains updateV1_1Norm
+
+
 
 
 let indexContainsRequiredFunctions vars =

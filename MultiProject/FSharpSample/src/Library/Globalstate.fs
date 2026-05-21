@@ -6,20 +6,11 @@ open System.Collections.Concurrent
 type DocEntry =
     { scid: string
       file: string option
-      doctype: string option
       bytes: byte[]
       mime: string
       isGzip: bool
       verified: bool }
 
- (*     
-type DocEntry =
-    {   scid: string 
-        file: string option
-        doctype: string option 
-        sccode: string option 
-        verified: bool }
- *)
 type DocMap =
     {   rootscid: string
         version: string option

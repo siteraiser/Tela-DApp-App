@@ -4,19 +4,14 @@ open System
 open System.Net
 open System.IO
 open TelaCrypto
-open TelaCrypto.G1
 open TelaCrypto.Signature
 open Globalstate
 open Security
 open Gnomon
-open Json
 open Htmlcontent
 open Dvm
 open System.Text
 open Telavalidation
-open System.Threading.Tasks
-
-
 
 let index args =
     task {
@@ -31,12 +26,17 @@ let index args =
 
         for scid in scids do
             let! vars = GetSCIDVariableDetailsAtTopoheight (scid, height)
-            
-            let title =
-                [ "nameHdr"
-                  "var_header_name" ]
-                |> List.tryPick (fun key -> tryGetVar vars key)
+           
 
+            let mutable title = tryGetVar vars "nameHdr"
+            if title = None then 
+                title <- tryGetVar vars "var_header_name"
+
+            let durl =  tryGetVar vars "dURL" |> Option.defaultValue ""
+            let isShards = durl.EndsWith(".shards")   
+            if isShards then
+                title <- None
+                
             match title with
             | None ->
                 printfn "SCID %s has no title" scid
@@ -103,7 +103,7 @@ let buildDocMap rootscid vars =
         |> List.choose (fun v ->
             match tryGetString v.Key, tryGetString v.Value with
             | Some key, Some value when key.StartsWith("DOC") ->
-                Some { scid = value; doctype = None; file = None; isGzip = false; mime = ""; bytes = [||]; verified = false }
+                Some { scid = value; file = None; isGzip = false; mime = ""; bytes = [||]; verified = false }
             | _ -> None)   
 
     { rootscid = rootscid; version = version; owner = owner; docs = docs }
@@ -126,23 +126,6 @@ let getShardList vars =
         | _ -> 0)
 
 
-(*
-
-
-let combineShards = 
-
-
-    let sortShardVars (vars: ScidVariable array) =
-    vars
-    |> Array.choose (fun v ->
-        if v.Key.StartsWith("DOC") then Some v else None)
-    |> Array.sortBy (fun v ->
-        let num = v.Key.Substring(3)
-        match System.Int32.TryParse num with
-        | true, n -> n
-        | _ -> 0)
-*)
-
 let trimLeadingSlash (input: string) =
     if String.IsNullOrEmpty(input) then
         input // Return as-is if null or empty
@@ -155,8 +138,6 @@ let trimTrailingSlash (input: string) =
         input.TrimEnd('/')
 let checkSignature (sccode: string option) (vars: ScidVariable array) =
    
-    //let get key = tryGetVar vars key // Helper (get): safe lookup 
-
     // Signature fields
     let owner        = tryGetVar vars "owner" |> Option.defaultValue "error"
     let cHex         = tryGetVar vars "fileCheckC" |> Option.defaultValue ""
@@ -165,7 +146,7 @@ let checkSignature (sccode: string option) (vars: ScidVariable array) =
 
     printfn "verifying address %s" owner
 
-    if docImmutable && docContainsRequiredFunctions vars then
+    if docImmutable then
         true
     else
         // Extract comment
@@ -209,7 +190,8 @@ let extractBytes (sccode: string option) =
 
 
 type ShardResult =
-    { verified : bool
+    { valid : bool
+      verified : bool
       file     : string option
       document : byte[]
       isGzip   : bool }
@@ -220,23 +202,25 @@ let getShardedDoc (indexVars: ScidVariable array) = task {
 
     let mutable shardInfos = []
     let mutable name = None
+    let mutable valid = true
     for (_, scid) in shards do
         let! vars = GetSC scid
-
-        if isNull vars then
-            failwithf "Shard SCID %s failed to load" scid
 
         let sccode = tryGetVar vars "C"
         let verified = checkSignature sccode vars
         let comment = sccode |> Option.bind extractDvmComment
         name <- tryGetVar vars "var_header_name"
+        if valid then
+            valid <- docContainsRequiredFunctions vars
 
         shardInfos <- (verified, comment, vars) :: shardInfos
 
     let shardInfos = List.rev shardInfos
 
-    let allVerified =
+    let allVerified = 
         shardInfos |> List.forall (fun (v,_,_) -> v)
+        
+
 
     // 1. Combine raw fragment strings
     let combinedString =
@@ -286,16 +270,14 @@ let getShardedDoc (indexVars: ScidVariable array) = task {
     let cleanName = cleanShardFilename cleanName
 
     return {
-        verified = allVerified
+        valid    = valid
+        verified = allVerified        
         file     = if cleanName = "" then None else Some cleanName 
         document = decoded
         isGzip   = isGzip
     }
 }
 
-
-
-    
 
 let getMime  (fileName : string option) = 
     match fileName with
@@ -317,18 +299,15 @@ let enrichDocMap (dm: DocMap) =
             // If SCID is invalid or missing, return a stub entry
             if isNull vars then
                 printfn "Error loading SCID %s" d.scid
-                newDocs <- { d with doctype = None; file = None; isGzip = false; mime = "";  bytes = [||]; verified = false; } :: newDocs
+                newDocs <- { d with file = None; isGzip = false; mime = "";  bytes = [||]; verified = false; } :: newDocs
             else
                 printfn "Enriching SCID %s" d.scid
                 
                 // Helper: safe lookup
                 let get key = tryGetVar vars key
 
-                // Metadata
-               
-                
+                // Metadata               
                 let mutable subdir   = get "subDir" |> Option.map trimLeadingSlash |> Option.map trimTrailingSlash
-                let doctype  = get "docType"
                 let sccode   = get "C"
 
                 let filename =
@@ -348,8 +327,9 @@ let enrichDocMap (dm: DocMap) =
                     tryGetVar vars "DOC1"
                     |> Option.isSome
 
-
+                
                 if not(isSharded) then
+                    // Normal Document
                     printf "NORMAL DOC\n"
                     // Signature verification
                     verified <- checkSignature sccode vars // owner cHex sHex
@@ -367,13 +347,21 @@ let enrichDocMap (dm: DocMap) =
                     rawBytes <- b
                     isGzip <- g   
                 else
+                    // Shards Index, needs to be assembled
                     printf "SHARDED DOC\n"
                     let! r = getShardedDoc vars
+
+                    if not r.valid && indexContainsRequiredFunctions vars then
+                        printfn "Error invalid shard, shards sc %s" d.scid
+                        newDocs <- { d with file = None; isGzip = false; mime = "";  bytes = [||]; verified = false; } :: newDocs
+
                     verified <- r.verified
                     file <- r.file
                     rawBytes <- r.document
                     isGzip <- r.isGzip
-                    //mabye consider subdir as an option, then fall back...
+
+                    
+                    //maybe consider subdir as an option, then fall back...
                     let folder = get "dURL" |> Option.map trimLeadingSlash |> Option.map trimTrailingSlash 
                     file <-
                     [ folder; file ]
@@ -396,11 +384,10 @@ let enrichDocMap (dm: DocMap) =
                     | None ->
                         "application/octet-stream" // maybe default to something else
 
-                printfn "Loaded SCID %s: file=%A doctype=%A C_length=%A" d.scid file doctype (sccode |> Option.map String.length)
+                printfn "Loaded SCID %s: file=%A  C_length=%A" d.scid file (sccode |> Option.map String.length)
 
                 newDocs <-
-                    { d with
-                        doctype  = doctype
+                    { d with                        
                         file     = file                        
                         bytes    = rawBytes
                         verified = verified
@@ -412,47 +399,6 @@ let enrichDocMap (dm: DocMap) =
         return { dm with docs = List.rev newDocs }
     }
 
-(* 
-let serve (context: HttpListenerContext) (entry: DocEntry) =
-    let response = context.Response
-    //printfn "entry: %A" (entry)
-    printfn "SERVE: Serving file %A for SCID %s \n " entry.file entry.scid //entry.sccode
-    // 1. Load SCID source. 
-    let sccode  = entry.sccode |> optStringToRawJson
-
-    let bytes, isGzip =
-        match extractDvmComment sccode with
-        | None ->
-            response.StatusCode <- 500
-            Encoding.UTF8.GetBytes("No embedded content found"), false
-            
-        | Some content ->
-            
-            let isGzipBase64 =
-                try
-                    let b = Convert.FromBase64String(content)
-                    b.[0] = 0x1Fuy && b.[1] = 0x8Buy
-                with _ -> false
-            
-            if isGzipBase64 then
-                Convert.FromBase64String(content), true
-            else
-                Encoding.UTF8.GetBytes(content), false
-    if isGzip then
-        let realFile =
-            entry.file |> Option.map (fun f -> if f.EndsWith(".gz") then f.Substring(0, f.Length - 3) else f)
-        response.ContentType <- getMime realFile    
-        response.AddHeader("Content-Encoding", "gzip")
-    else
-        response.ContentType <- getMime entry.file   
-    response.ContentLength64 <- int64 bytes.Length
-    
-    task {       
-        do! response.OutputStream.WriteAsync(bytes, 0, bytes.Length)
-        response.OutputStream.Close()
-        return ()
-    }
- *)  
 
 let handleOpen scid = task {
     match DocStore.tryGet scid with
